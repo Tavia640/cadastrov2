@@ -36,11 +36,25 @@ const AdminDashboard = () => {
   const carregarFichas = () => {
     setLoading(true);
     try {
-      const fichasData = FichaStorageService.getFichas();
-      const stats = FichaStorageService.getEstatisticas();
+      const fichasPromise = FichaStorageService.getFichas();
+      const statsPromise = FichaStorageService.getEstatisticas();
       
-      setFichas(fichasData);
-      setEstatisticas(stats);
+      // Se estiver usando Supabase, aguardar as promises
+      if (fichasPromise instanceof Promise) {
+        Promise.all([fichasPromise, statsPromise]).then(([fichasData, stats]) => {
+          setFichas(fichasData);
+          setEstatisticas(stats);
+          setLoading(false);
+        }).catch(error => {
+          console.error('Erro ao carregar dados:', error);
+          setLoading(false);
+        });
+      } else {
+        // Dados síncronos (localStorage)
+        setFichas(fichasPromise);
+        setEstatisticas(statsPromise);
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Erro ao carregar fichas:', error);
     } finally {
@@ -55,7 +69,6 @@ const AdminDashboard = () => {
     // O status só deve mudar quando o admin pegar para fazer
   };
 
-  const handleCloseModal = () => {
     setModalOpen(false);
     setFichaVisualizacao(null);
   };
@@ -63,12 +76,24 @@ const AdminDashboard = () => {
   const handlePegarParaFazer = (ficha: FichaCompleta) => {
     if (!session) return;
 
-    const sucesso = FichaStorageService.pegarFichaParaFazer(ficha.id, session.nome);
-    if (sucesso) {
-      carregarFichas();
-      alert(`✅ Ficha atribuída com sucesso! Você agora é responsável pelo atendimento de ${ficha.dadosCliente.nome}.`);
+    const resultado = FichaStorageService.pegarFichaParaFazer(ficha.id, session.nome);
+    
+    if (resultado instanceof Promise) {
+      resultado.then(sucesso => {
+        if (sucesso) {
+          carregarFichas();
+          alert(`✅ Ficha atribuída com sucesso! Você agora é responsável pelo atendimento de ${ficha.dadosCliente.nome}.`);
+        } else {
+          alert('❌ Não foi possível pegar esta ficha. Ela pode já estar sendo atendida por outro administrador.');
+        }
+      });
     } else {
-      alert('❌ Não foi possível pegar esta ficha. Ela pode já estar sendo atendida por outro administrador.');
+      if (resultado) {
+        carregarFichas();
+        alert(`✅ Ficha atribuída com sucesso! Você agora é responsável pelo atendimento de ${ficha.dadosCliente.nome}.`);
+      } else {
+        alert('❌ Não foi possível pegar esta ficha. Ela pode já estar sendo atendida por outro administrador.');
+      }
     }
   };
 
@@ -78,22 +103,27 @@ const AdminDashboard = () => {
       return;
     }
 
-    console.log('🔍 Debug Encerrar Atendimento:');
-    console.log('- Ficha ID:', ficha.id);
-    console.log('- Status da ficha:', ficha.status);
-    console.log('- Admin responsável na ficha:', ficha.adminResponsavel);
-    console.log('- Admin da sessão atual:', session.nome);
-    console.log('- Comparação:', ficha.adminResponsavel === session.nome);
-
     const confirmar = window.confirm(`Tem certeza que deseja encerrar o atendimento da ficha de ${ficha.dadosCliente.nome}?\n\nAdmin responsável: ${ficha.adminResponsavel}\nSua sessão: ${session.nome}`);
     if (!confirmar) return;
 
-    const sucesso = FichaStorageService.encerrarAtendimento(ficha.id, session.nome);
-    if (sucesso) {
-      carregarFichas();
-      alert(`✅ Atendimento encerrado com sucesso!`);
+    const resultado = FichaStorageService.encerrarAtendimento(ficha.id, session.nome);
+    
+    if (resultado instanceof Promise) {
+      resultado.then(sucesso => {
+        if (sucesso) {
+          carregarFichas();
+          alert(`✅ Atendimento encerrado com sucesso!`);
+        } else {
+          alert(`❌ Não foi possível encerrar o atendimento.`);
+        }
+      });
     } else {
-      alert(`❌ Não foi possível encerrar o atendimento.\n\nDetalhes:\n- Status da ficha: ${ficha.status}\n- Admin responsável: ${ficha.adminResponsavel}\n- Sua sessão: ${session.nome}\n\nVerifique o console para mais informações.`);
+      if (resultado) {
+        carregarFichas();
+        alert(`✅ Atendimento encerrado com sucesso!`);
+      } else {
+        alert(`❌ Não foi possível encerrar o atendimento.`);
+      }
     }
   };
 
@@ -103,12 +133,24 @@ const AdminDashboard = () => {
     const confirmar = window.confirm(`Tem certeza que deseja liberar a ficha de ${ficha.dadosCliente.nome}? Ela voltará para a lista de fichas pendentes.`);
     if (!confirmar) return;
 
-    const sucesso = FichaStorageService.liberarFicha(ficha.id, session.nome);
-    if (sucesso) {
-      carregarFichas();
-      alert(`✅ Ficha liberada com sucesso!`);
+    const resultado = FichaStorageService.liberarFicha(ficha.id, session.nome);
+    
+    if (resultado instanceof Promise) {
+      resultado.then(sucesso => {
+        if (sucesso) {
+          carregarFichas();
+          alert(`✅ Ficha liberada com sucesso!`);
+        } else {
+          alert('❌ Não foi possível liberar a ficha.');
+        }
+      });
     } else {
-      alert('❌ Não foi possível liberar a ficha.');
+      if (resultado) {
+        carregarFichas();
+        alert(`✅ Ficha liberada com sucesso!`);
+      } else {
+        alert('❌ Não foi possível liberar a ficha.');
+      }
     }
   };
 
@@ -118,12 +160,24 @@ const AdminDashboard = () => {
     const confirmar = window.confirm(`Tem certeza que deseja arquivar a ficha de ${ficha.dadosCliente.nome}?`);
     if (!confirmar) return;
 
-    const sucesso = FichaStorageService.arquivarFicha(ficha.id, session.nome);
-    if (sucesso) {
-      carregarFichas();
-      alert(`📁 Ficha arquivada com sucesso!`);
+    const resultado = FichaStorageService.arquivarFicha(ficha.id, session.nome);
+    
+    if (resultado instanceof Promise) {
+      resultado.then(sucesso => {
+        if (sucesso) {
+          carregarFichas();
+          alert(`📁 Ficha arquivada com sucesso!`);
+        } else {
+          alert('❌ Não foi possível arquivar a ficha. Só é possível arquivar fichas concluídas.');
+        }
+      });
     } else {
-      alert('❌ Não foi possível arquivar a ficha. Só é possível arquivar fichas concluídas.');
+      if (resultado) {
+        carregarFichas();
+        alert(`📁 Ficha arquivada com sucesso!`);
+      } else {
+        alert('❌ Não foi possível arquivar a ficha. Só é possível arquivar fichas concluídas.');
+      }
     }
   };
 
@@ -133,12 +187,25 @@ const AdminDashboard = () => {
     const confirmar = window.confirm(`Tem certeza que deseja desarquivar a ficha de ${ficha.dadosCliente.nome}?`);
     if (!confirmar) return;
 
-    const sucesso = FichaStorageService.desarquivarFicha(ficha.id, session.nome);
-    if (sucesso) {
-      carregarFichas();
-      alert(`📂 Ficha desarquivada com sucesso!`);
+    const resultado = FichaStorageService.desarquivarFicha(ficha.id, session.nome);
+    
+    if (resultado instanceof Promise) {
+      resultado.then(sucesso => {
+        if (sucesso) {
+          carregarFichas();
+          alert(`📂 Ficha desarquivada com sucesso!`);
+        } else {
+          alert('❌ Não foi possível desarquivar a ficha.');
+        }
+      });
     } else {
-      alert('❌ Não foi possível desarquivar a ficha.');
+      if (resultado) {
+        carregarFichas();
+        alert(`📂 Ficha desarquivada com sucesso!`);
+      } else {
+        alert('❌ Não foi possível desarquivar a ficha.');
+      }
+    }
     }
   };
 

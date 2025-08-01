@@ -1,4 +1,5 @@
 import { DadosCliente, DadosNegociacao } from './pdfGenerator';
+import { SupabaseFichaService } from './supabaseFichaService';
 
 export interface FichaCompleta {
   id: string;
@@ -15,8 +16,31 @@ export interface FichaCompleta {
 export class FichaStorageService {
   private static readonly FICHAS_KEY = 'gav_fichas_admin';
   private static readonly MAX_FICHAS = 50; // Limite para não sobrecarregar o localStorage
+  private static readonly USE_SUPABASE = true; // Flag para usar Supabase
 
   static salvarFicha(dadosCliente: DadosCliente, dadosNegociacao: DadosNegociacao, nomeConsultor: string): string {
+    if (this.USE_SUPABASE) {
+      return this.salvarFichaSupabase(dadosCliente, dadosNegociacao, nomeConsultor);
+    }
+    return this.salvarFichaLocal(dadosCliente, dadosNegociacao, nomeConsultor);
+  }
+
+  private static async salvarFichaSupabase(
+    dadosCliente: DadosCliente, 
+    dadosNegociacao: DadosNegociacao, 
+    nomeConsultor: string
+  ): Promise<string> {
+    try {
+      const fichaId = await SupabaseFichaService.salvarFicha(dadosCliente, dadosNegociacao, nomeConsultor);
+      console.log(`✅ Ficha salva no Supabase - ID: ${fichaId}`);
+      return fichaId;
+    } catch (error) {
+      console.error('❌ Erro ao salvar no Supabase, usando localStorage como fallback:', error);
+      return this.salvarFichaLocal(dadosCliente, dadosNegociacao, nomeConsultor);
+    }
+  }
+
+  private static salvarFichaLocal(dadosCliente: DadosCliente, dadosNegociacao: DadosNegociacao, nomeConsultor: string): string {
     try {
       const fichas = this.getFichas();
       
@@ -48,6 +72,22 @@ export class FichaStorageService {
   }
 
   static getFichas(): FichaCompleta[] {
+    if (this.USE_SUPABASE) {
+      return this.getFichasSupabase();
+    }
+    return this.getFichasLocal();
+  }
+
+  private static async getFichasSupabase(): Promise<FichaCompleta[]> {
+    try {
+      return await SupabaseFichaService.getFichas();
+    } catch (error) {
+      console.error('❌ Erro ao buscar fichas no Supabase, usando localStorage como fallback:', error);
+      return this.getFichasLocal();
+    }
+  }
+
+  private static getFichasLocal(): FichaCompleta[] {
     try {
       const fichasData = localStorage.getItem(this.FICHAS_KEY);
       if (!fichasData) return [];
@@ -73,11 +113,43 @@ export class FichaStorageService {
   }
 
   static getFicha(id: string): FichaCompleta | null {
+    if (this.USE_SUPABASE) {
+      return this.getFichaSupabase(id);
+    }
+    return this.getFichaLocal(id);
+  }
+
+  private static async getFichaSupabase(id: string): Promise<FichaCompleta | null> {
+    try {
+      return await SupabaseFichaService.getFicha(id);
+    } catch (error) {
+      console.error('❌ Erro ao buscar ficha no Supabase:', error);
+      return this.getFichaLocal(id);
+    }
+  }
+
+  private static getFichaLocal(id: string): FichaCompleta | null {
     const fichas = this.getFichas();
     return fichas.find(ficha => ficha.id === id) || null;
   }
 
   static atualizarStatus(id: string, status: FichaCompleta['status']): boolean {
+    if (this.USE_SUPABASE) {
+      return this.atualizarStatusSupabase(id, status);
+    }
+    return this.atualizarStatusLocal(id, status);
+  }
+
+  private static async atualizarStatusSupabase(id: string, status: FichaCompleta['status']): Promise<boolean> {
+    try {
+      return await SupabaseFichaService.atualizarStatus(id, status);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar status no Supabase:', error);
+      return this.atualizarStatusLocal(id, status);
+    }
+  }
+
+  private static atualizarStatusLocal(id: string, status: FichaCompleta['status']): boolean {
     try {
       const fichas = this.getFichas();
       const index = fichas.findIndex(ficha => ficha.id === id);
@@ -100,6 +172,22 @@ export class FichaStorageService {
   }
 
   static pegarFichaParaFazer(id: string, nomeAdmin: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.pegarFichaParaFazerSupabase(id, nomeAdmin);
+    }
+    return this.pegarFichaParaFazerLocal(id, nomeAdmin);
+  }
+
+  private static async pegarFichaParaFazerSupabase(id: string, nomeAdmin: string): Promise<boolean> {
+    try {
+      return await SupabaseFichaService.pegarFichaParaFazer(id, nomeAdmin);
+    } catch (error) {
+      console.error('❌ Erro ao pegar ficha no Supabase:', error);
+      return this.pegarFichaParaFazerLocal(id, nomeAdmin);
+    }
+  }
+
+  private static pegarFichaParaFazerLocal(id: string, nomeAdmin: string): boolean {
     try {
       const fichas = this.getFichas();
       const index = fichas.findIndex(ficha => ficha.id === id);
@@ -126,6 +214,22 @@ export class FichaStorageService {
   }
 
   static encerrarAtendimento(id: string, nomeAdmin: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.encerrarAtendimentoSupabase(id, nomeAdmin);
+    }
+    return this.encerrarAtendimentoLocal(id, nomeAdmin);
+  }
+
+  private static async encerrarAtendimentoSupabase(id: string, nomeAdmin: string): Promise<boolean> {
+    try {
+      return await SupabaseFichaService.encerrarAtendimento(id, nomeAdmin);
+    } catch (error) {
+      console.error('❌ Erro ao encerrar atendimento no Supabase:', error);
+      return this.encerrarAtendimentoLocal(id, nomeAdmin);
+    }
+  }
+
+  private static encerrarAtendimentoLocal(id: string, nomeAdmin: string): boolean {
     try {
       console.log('🔍 FichaStorageService.encerrarAtendimento - Debug:');
       console.log('- ID da ficha:', id);
@@ -174,6 +278,22 @@ export class FichaStorageService {
   }
 
   static liberarFicha(id: string, nomeAdmin: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.liberarFichaSupabase(id, nomeAdmin);
+    }
+    return this.liberarFichaLocal(id, nomeAdmin);
+  }
+
+  private static async liberarFichaSupabase(id: string, nomeAdmin: string): Promise<boolean> {
+    try {
+      return await SupabaseFichaService.liberarFicha(id, nomeAdmin);
+    } catch (error) {
+      console.error('❌ Erro ao liberar ficha no Supabase:', error);
+      return this.liberarFichaLocal(id, nomeAdmin);
+    }
+  }
+
+  private static liberarFichaLocal(id: string, nomeAdmin: string): boolean {
     try {
       const fichas = this.getFichas();
       const index = fichas.findIndex(ficha => ficha.id === id);
@@ -200,6 +320,22 @@ export class FichaStorageService {
   }
 
   static arquivarFicha(id: string, nomeAdmin: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.arquivarFichaSupabase(id);
+    }
+    return this.arquivarFichaLocal(id, nomeAdmin);
+  }
+
+  private static async arquivarFichaSupabase(id: string): Promise<boolean> {
+    try {
+      return await SupabaseFichaService.arquivarFicha(id);
+    } catch (error) {
+      console.error('❌ Erro ao arquivar ficha no Supabase:', error);
+      return false;
+    }
+  }
+
+  private static arquivarFichaLocal(id: string, nomeAdmin: string): boolean {
     try {
       const fichas = this.getFichas();
       const index = fichas.findIndex(ficha => ficha.id === id);
@@ -224,6 +360,22 @@ export class FichaStorageService {
   }
 
   static desarquivarFicha(id: string, nomeAdmin: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.desarquivarFichaSupabase(id);
+    }
+    return this.desarquivarFichaLocal(id, nomeAdmin);
+  }
+
+  private static async desarquivarFichaSupabase(id: string): Promise<boolean> {
+    try {
+      return await SupabaseFichaService.desarquivarFicha(id);
+    } catch (error) {
+      console.error('❌ Erro ao desarquivar ficha no Supabase:', error);
+      return false;
+    }
+  }
+
+  private static desarquivarFichaLocal(id: string, nomeAdmin: string): boolean {
     try {
       const fichas = this.getFichas();
       const index = fichas.findIndex(ficha => ficha.id === id);
@@ -252,6 +404,22 @@ export class FichaStorageService {
   }
 
   static getEstatisticas() {
+    if (this.USE_SUPABASE) {
+      return this.getEstatisticasSupabase();
+    }
+    return this.getEstatisticasLocal();
+  }
+
+  private static async getEstatisticasSupabase() {
+    try {
+      return await SupabaseFichaService.getEstatisticas();
+    } catch (error) {
+      console.error('❌ Erro ao buscar estatísticas no Supabase:', error);
+      return this.getEstatisticasLocal();
+    }
+  }
+
+  private static getEstatisticasLocal() {
     const fichas = this.getFichas();
 
     return {
