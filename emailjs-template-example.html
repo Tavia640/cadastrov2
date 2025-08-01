@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ficha de Negociação - GAV Resorts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .content {
+            background-color: #ffffff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+        .info-section {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GAV Resorts - Ficha de Negociação</h1>
+    </div>
+    
+    <div class="content">
+        <p>Prezado(a) {{to_name}},</p>
+        
+        <p>{{message}}</p>
+        
+        <div class="info-section">
+            <h3>Informações do Cliente:</h3>
+            <p><strong>Nome:</strong> {{client_name}}</p>
+            <p><strong>CPF:</strong> {{client_cpf}}</p>
+            <p><strong>Telefone:</strong> {{client_phone}}</p>
+        </div>
+        
+        <div class="info-section">
+            <h3>Informações da Venda:</h3>
+            <p><strong>Closer:</strong> {{closer}}</p>
+            <p><strong>Liner:</strong> {{liner}}</p>
+            <p><strong>Tipo de Venda:</strong> {{tipo_venda}}</p>
+        </div>
+        
+        <p>Os PDFs com os detalhes completos da negociação estão em anexo:</p>
+        <ul>
+            <li>Cadastro do Cliente</li>
+            <li>Ficha de Negociação</li>
+        </ul>
+        
+        <p>Atenciosamente,<br>
+        Equipe GAV Resorts</p>
+    </div>
+    
+    <div class="footer">
+        <p>Este é um e-mail automático do sistema GAV Resorts.</p>
+        <p>Data: {{current_date}}</p>
+    </div>
+</body>
+</html>
+
+<!-- 
+INSTRUÇÕES PARA USO NO EMAILJS:
+
+1. Crie uma conta no EmailJS (https://emailjs.com)
+2. Configure um serviço de email (Gmail, Outlook, SendGrid, etc.)
+3. Crie um template usando este HTML
+4. Configure as seguintes variáveis no template:
+   - to_name: Nome do destinatário
+   - to_email: Email do destinatário 
+   - from_email: Email do remetente
+   - client_name: Nome do cliente
+   - client_cpf: CPF do cliente
+   - client_phone: Telefone do cliente
+   - closer: Nome do closer
+   - liner: Nome do liner
+   - tipo_venda: Tipo de venda
+   - message: Mensagem principal
+   - pdf_cadastro: PDF do cadastro (base64)
+   - pdf_negociacao: PDF da negociação (base64)
+   - attachment_name_1: Nome do arquivo PDF 1
+   - attachment_name_2: Nome do arquivo PDF 2
+
+5. Para anexos PDF, configure no EmailJS:
+   - Attachment 1: {{pdf_cadastro}} com nome {{attachment_name_1}}
+   - Attachment 2: {{pdf_negociacao}} com nome {{attachment_name_2}}
+
+6. Atualize as configurações no sistema:
+   - EMAILJS_SERVICE_ID: ID do serviço no EmailJS
+   - EMAILJS_TEMPLATE_ID: ID do template criado
+   - EMAILJS_PUBLIC_KEY: Chave pública da sua conta EmailJS
+   - EMAILJS_DESTINATION_EMAIL: Email para onde enviar as fichas
+   - EMAILJS_FROM_EMAIL: Email remetente (opcional)
+-->

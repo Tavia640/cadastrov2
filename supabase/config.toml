@@ -1,0 +1,7 @@
+project_id = "msxhwlwxpvrtmyngwwcp"
+
+[functions.send-pdfs]
+verify_jwt = false
+
+[functions.send-pdfs-v2]
+verify_jwt = false
