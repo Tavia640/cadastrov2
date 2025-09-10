@@ -16,7 +16,7 @@ export interface FichaCompleta {
 export class FichaStorageService {
   private static readonly FICHAS_KEY = 'gav_fichas_admin';
   private static readonly MAX_FICHAS = 50; // Limite para não sobrecarregar o localStorage
-  private static readonly USE_SUPABASE = true; // Flag para usar Supabase
+  private static readonly USE_SUPABASE = false; // Flag para usar Supabase
 
   static salvarFicha(dadosCliente: DadosCliente, dadosNegociacao: DadosNegociacao, nomeConsultor: string): string {
     if (this.USE_SUPABASE) {
@@ -92,8 +92,9 @@ export class FichaStorageService {
       const fichasData = localStorage.getItem(this.FICHAS_KEY);
       if (!fichasData) return [];
 
-      const fichas: FichaCompleta[] = JSON.parse(fichasData);
-      
+      const parsed = JSON.parse(fichasData);
+      const fichas: FichaCompleta[] = Array.isArray(parsed) ? parsed : [];
+
       // Filtrar fichas muito antigas (mais de 24h)
       const agora = Date.now();
       const fichasFiltradas = fichas.filter(ficha => 
