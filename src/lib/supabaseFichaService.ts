@@ -498,6 +498,11 @@ export class SupabaseFichaService {
     return await this.atualizarStatus(id, 'concluida');
   }
 
+  static async devolverParaConsultor(id: string, _nomeAdmin: string, _motivo: string): Promise<boolean> {
+    // Sem suporte a motivo no schema atual; apenas volta para pendente
+    return await this.atualizarStatus(id, 'pendente');
+  }
+
   static async getEstatisticas() {
     try {
       const { data: fichas, error } = await supabase
