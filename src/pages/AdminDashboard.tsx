@@ -148,7 +148,7 @@ const AdminDashboard: React.FC = () => {
               <CardTitle className="text-2xl font-bold">Painel do Administrador</CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={carregarFichas} disabled={loading} className="flex items-center gap-2">
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className="h-4 w-4" />
                   Atualizar
                 </Button>
               </div>
