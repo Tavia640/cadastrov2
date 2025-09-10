@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { ArrowLeft, Eye, RefreshCw, CheckCircle2, XCircle, Archive, Inbox, UserCheck, Search } from 'lucide-react';
+import { ArrowLeft, Eye, RefreshCw, CheckCircle2, XCircle, Archive, Inbox, UserCheck, Search, Printer, Undo2 } from 'lucide-react';
 import SessionHeader from '@/components/SessionHeader';
 import FichaVisualizationModal from '@/components/FichaVisualizationModal';
 import { FichaCompleta, FichaStorageService } from '@/lib/fichaStorageService';
+import { PDFGenerator } from '@/lib/pdfGenerator';
 import { SessionService } from '@/lib/sessionService';
 
 const statusLabels: Record<FichaCompleta['status'], string> = {
@@ -112,6 +113,32 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const imprimirFicha = (ficha: FichaCompleta) => {
+    try {
+      const url = PDFGenerator.gerarPDFNegociacao(ficha.dadosCliente, ficha.dadosNegociacao);
+      const win = window.open(url, '_blank');
+      if (win) {
+        setTimeout(() => {
+          try { win.print(); } catch {}
+        }, 800);
+      }
+    } catch (e) {
+      console.error('Erro ao imprimir ficha:', e);
+      toast.error('Falha ao gerar PDF para impressão');
+    }
+  };
+
+  const devolverFicha = async (id: string) => {
+    const motivo = window.prompt('Informe o motivo da devolução para o consultor:') || '';
+    const ok = await Promise.resolve(FichaStorageService.devolverParaConsultor(id, nomeAdmin, motivo) as any);
+    if (ok) {
+      toast.success('Ficha devolvida ao consultor');
+      carregarFichas();
+    } else {
+      toast.error('Não foi possível devolver a ficha');
+    }
+  };
+
   const arquivar = async (id: string) => {
     const ok = await Promise.resolve(FichaStorageService.arquivarFicha(id, nomeAdmin) as any);
     if (ok) {
@@ -196,7 +223,7 @@ const AdminDashboard: React.FC = () => {
                       <th className="text-left p-2 border">Consultor</th>
                       <th className="text-left p-2 border">Status</th>
                       <th className="text-left p-2 border">Responsável</th>
-                      <th className="text-left p-2 border w-[380px]">Ações</th>
+                      <th className="text-left p-2 border w-[520px]">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -214,6 +241,9 @@ const AdminDashboard: React.FC = () => {
                             <Button size="sm" variant="outline" onClick={() => abrirVisualizacao(ficha)} className="flex items-center gap-2">
                               <Eye className="h-4 w-4" /> Visualizar
                             </Button>
+                            <Button size="sm" variant="outline" onClick={() => imprimirFicha(ficha)} className="flex items-center gap-2">
+                              <Printer className="h-4 w-4" /> Imprimir
+                            </Button>
 
                             {ficha.status === 'pendente' && (
                               <Button size="sm" onClick={() => pegarFicha(ficha.id)} className="flex items-center gap-2">
@@ -228,6 +258,9 @@ const AdminDashboard: React.FC = () => {
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={() => liberarFicha(ficha.id)} className="flex items-center gap-2">
                                   <XCircle className="h-4 w-4" /> Liberar
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => devolverFicha(ficha.id)} className="flex items-center gap-2">
+                                  <Undo2 className="h-4 w-4" /> Devolver
                                 </Button>
                               </>
                             )}
