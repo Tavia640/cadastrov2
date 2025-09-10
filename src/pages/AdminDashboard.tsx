@@ -144,9 +144,6 @@ const AdminDashboard: React.FC = () => {
     try {
       const blobNegociacao = PDFGenerator.gerarPDFNegociacaoBlob(ficha.dadosCliente, ficha.dadosNegociacao);
       printBlobViaIframe(blobNegociacao);
-      // Opcional: imprimir também o cadastro do cliente
-      const blobCadastro = PDFGenerator.gerarPDFCadastroClienteBlob(ficha.dadosCliente);
-      setTimeout(() => printBlobViaIframe(blobCadastro), 1200);
     } catch (e) {
       console.error('Erro ao imprimir ficha:', e);
       toast.error('Falha ao gerar PDF para impressão');
