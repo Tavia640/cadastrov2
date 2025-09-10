@@ -113,15 +113,40 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const printBlobViaIframe = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    const cleanup = () => {
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        iframe.parentNode?.removeChild(iframe);
+      }, 1000);
+    };
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        cleanup();
+      }
+    };
+  };
+
   const imprimirFicha = (ficha: FichaCompleta) => {
     try {
-      const url = PDFGenerator.gerarPDFNegociacao(ficha.dadosCliente, ficha.dadosNegociacao);
-      const win = window.open(url, '_blank');
-      if (win) {
-        setTimeout(() => {
-          try { win.print(); } catch {}
-        }, 800);
-      }
+      const blobNegociacao = PDFGenerator.gerarPDFNegociacaoBlob(ficha.dadosCliente, ficha.dadosNegociacao);
+      printBlobViaIframe(blobNegociacao);
+      // Opcional: imprimir também o cadastro do cliente
+      const blobCadastro = PDFGenerator.gerarPDFCadastroClienteBlob(ficha.dadosCliente);
+      setTimeout(() => printBlobViaIframe(blobCadastro), 1200);
     } catch (e) {
       console.error('Erro ao imprimir ficha:', e);
       toast.error('Falha ao gerar PDF para impressão');
