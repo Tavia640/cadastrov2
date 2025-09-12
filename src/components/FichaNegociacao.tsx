@@ -14,6 +14,7 @@ import { EmailJsService } from '@/lib/emailJsService';
 import { FichaStorageService } from '@/lib/fichaStorageService';
 import { SessionService } from '@/lib/sessionService';
 import SessionHeader from '@/components/SessionHeader';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ParcelaPagaSala {
   id: string;
@@ -136,6 +137,37 @@ const FichaNegociacao = () => {
     });
   };
   const [loading, setLoading] = useState(true);
+  const [devolucaoMotivo, setDevolucaoMotivo] = useState<string>('');
+
+  // Pré-carregar devolutiva para o consultor
+  useEffect(() => {
+    try {
+      const session = SessionService.getSession();
+      const fichas = FichaStorageService.getFichas() as any;
+      const devolvida = (fichas || []).find((f: any) => f.devolvido && f.status === 'pendente' && f.nomeConsultor === session?.nome);
+      if (devolvida) {
+        const dc = devolvida.dadosCliente || {};
+        const dn = devolvida.dadosNegociacao || {};
+        localStorage.setItem('dadosCliente', JSON.stringify(dc));
+        setLiner(dn.liner || '');
+        setCloser(dn.closer || '');
+        setLiderSala(dn.liderSala || '');
+        setNomeSala(dn.nomeSala || '');
+        setTipoVenda(dn.tipoVenda || '');
+        if (Array.isArray(dn.parcelasPagasSala) && dn.parcelasPagasSala.length > 0) {
+          setParcelasPagasSala(dn.parcelasPagasSala.map((p: any, i: number) => ({ id: String(i+1), ...p })));
+        }
+        if (Array.isArray(dn.contratos) && dn.contratos.length > 0) {
+          setContratos(dn.contratos.map((c: any, i: number) => ({ id: String(i+1), tipoContrato: c.tipoContrato || '', empreendimento: c.empreendimento || '', empreendimentoId: c.empreendimentoId || '', torre: c.torre || '', apartamento: c.apartamento || '', cota: c.cota || '', categoriaPreco: c.categoriaPreco || '', valor: c.valor || '' })));
+        }
+        if (Array.isArray(dn.informacoesPagamento) && dn.informacoesPagamento.length > 0) {
+          setInformacoesPagamento(dn.informacoesPagamento.map((info: any, i: number) => ({ id: String(i+1), ...info })));
+        }
+        setDevolucaoMotivo(devolvida.motivoDevolucao || '');
+        FichaStorageService.acknowledgeDevolucao(devolvida.id);
+      }
+    } catch {}
+  }, []);
 
   // Estados para alertas de autorização
   const [alertas, setAlertas] = useState<{[key: string]: string}>({});
@@ -789,6 +821,17 @@ const FichaNegociacao = () => {
     <div className="min-h-screen bg-background">
       <SessionHeader />
       <div className="max-w-6xl mx-auto p-6 space-y-6">
+      {devolucaoMotivo && (
+        <Alert className="border-warning">
+          <AlertTitle>Ficha devolvida pela administração</AlertTitle>
+          <AlertDescription>
+            {devolucaoMotivo}
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={() => setDevolucaoMotivo('')}>Entendi</Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
