@@ -305,12 +305,37 @@ export class FichaStorageService {
 
   private static async devolverParaConsultorSupabase(id: string, nomeAdmin: string, motivo: string): Promise<boolean> {
     try {
-      // Apenas voltar para pendente no Supabase (sem motivo)
       const ok = await SupabaseFichaService.atualizarStatus(id, 'pendente');
       return !!ok;
     } catch (error) {
       console.error('❌ Erro ao devolver ficha no Supabase:', error);
       return this.devolverParaConsultorLocal(id, nomeAdmin, motivo);
+    }
+  }
+
+  static acknowledgeDevolucao(id: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.acknowledgeDevolucaoSupabase(id);
+    }
+    return this.acknowledgeDevolucaoLocal(id);
+  }
+
+  private static async acknowledgeDevolucaoSupabase(_id: string): Promise<boolean> {
+    // Sem suporte a motivo/flag no schema atual
+    return true;
+  }
+
+  private static acknowledgeDevolucaoLocal(id: string): boolean {
+    try {
+      const fichas = this.getFichas();
+      const idx = fichas.findIndex(f => f.id === id);
+      if (idx === -1) return false;
+      fichas[idx].devolvido = false;
+      fichas[idx].motivoDevolucao = '';
+      localStorage.setItem(this.FICHAS_KEY, JSON.stringify(fichas));
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
