@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +26,7 @@ const formSchema = z.object({
   email: z.string().email('Email inválido'),
   telefone: z.string().min(10, 'Telefone é obrigatório'),
   profissao: z.string().min(2, 'Profissão é obrigatória'),
-  dataNascimento: z.string().min(10, 'Data de nascimento é obrigatória'),
+  dataNascimento: z.string().min(10, 'Data de nascimento é obrigat��ria'),
   estadoCivil: z.string().min(1, 'Estado civil é obrigatório'),
 
   // Campos de endereço
@@ -58,7 +58,7 @@ const CadastroCliente = () => {
   const [fichasDevolvidas, setFichasDevolvidas] = useState<FichaCompleta[]>([]);
 
   // Carregar fichas devolvidas do consultor
-  React.useEffect(() => {
+  useEffect(() => {
     const session = SessionService.getSession();
     const all = FichaStorageService.getFichas() as any;
     const devolvidas = (all || []).filter((f: any) => f.devolvido && f.status === 'pendente' && f.nomeConsultor === session?.nome);
