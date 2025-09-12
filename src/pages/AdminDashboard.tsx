@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { ArrowLeft, Eye, RefreshCw, CheckCircle2, XCircle, Archive, Inbox, UserCheck, Search, Printer, Undo2 } from 'lucide-react';
+import { ArrowLeft, Eye, RefreshCw, CheckCircle2, XCircle, Archive, Inbox, UserCheck, Search, Download, Undo2 } from 'lucide-react';
 import SessionHeader from '@/components/SessionHeader';
 import FichaVisualizationModal from '@/components/FichaVisualizationModal';
 import { FichaCompleta, FichaStorageService } from '@/lib/fichaStorageService';
@@ -140,13 +140,32 @@ const AdminDashboard: React.FC = () => {
     };
   };
 
-  const imprimirFicha = (ficha: FichaCompleta) => {
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 0);
+  };
+
+  const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9-_ ]+/g, ' ').trim().replace(/\s+/g, ' ');
+
+  const salvarPdfs = (ficha: FichaCompleta) => {
     try {
+      const nome = sanitize(ficha.dadosCliente.nome || 'Cliente');
       const blobNegociacao = PDFGenerator.gerarPDFNegociacaoBlob(ficha.dadosCliente, ficha.dadosNegociacao);
-      printBlobViaIframe(blobNegociacao);
+      const blobCadastro = PDFGenerator.gerarPDFCadastroClienteBlob(ficha.dadosCliente);
+      downloadBlob(blobNegociacao, `${nome} - Negociacao.pdf`);
+      setTimeout(() => downloadBlob(blobCadastro, `${nome} - Cadastro.pdf`), 300);
+      toast.success('PDFs gerados');
     } catch (e) {
-      console.error('Erro ao imprimir ficha:', e);
-      toast.error('Falha ao gerar PDF para impressão');
+      console.error('Erro ao salvar PDFs:', e);
+      toast.error('Falha ao gerar PDFs');
     }
   };
 
@@ -263,8 +282,8 @@ const AdminDashboard: React.FC = () => {
                             <Button size="sm" variant="outline" onClick={() => abrirVisualizacao(ficha)} className="flex items-center gap-2">
                               <Eye className="h-4 w-4" /> Visualizar
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => imprimirFicha(ficha)} className="flex items-center gap-2">
-                              <Printer className="h-4 w-4" /> Imprimir
+                            <Button size="sm" variant="outline" onClick={() => salvarPdfs(ficha)} className="flex items-center gap-2">
+                              <Download className="h-4 w-4" /> Salvar PDFs
                             </Button>
 
                             {ficha.status === 'pendente' && (
