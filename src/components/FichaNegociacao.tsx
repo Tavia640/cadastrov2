@@ -139,12 +139,14 @@ const FichaNegociacao = () => {
   const [loading, setLoading] = useState(true);
   const [devolucaoMotivo, setDevolucaoMotivo] = useState<string>('');
 
-  // Pré-carregar devolutiva para o consultor
+  // Pré-carregar devolutiva para o consultor (preferindo a ficha selecionada)
   useEffect(() => {
     try {
+      const selecionadaId = localStorage.getItem('fichaDevolvidaSelecionada');
       const session = SessionService.getSession();
       const fichas = FichaStorageService.getFichas() as any;
-      const devolvida = (fichas || []).find((f: any) => f.devolvido && f.status === 'pendente' && f.nomeConsultor === session?.nome);
+      const candidates = (fichas || []).filter((f: any) => f.devolvido && f.status === 'pendente' && f.nomeConsultor === session?.nome);
+      const devolvida = selecionadaId ? candidates.find((f: any) => f.id === selecionadaId) : candidates[0];
       if (devolvida) {
         const dc = devolvida.dadosCliente || {};
         const dn = devolvida.dadosNegociacao || {};
@@ -165,6 +167,7 @@ const FichaNegociacao = () => {
         }
         setDevolucaoMotivo(devolvida.motivoDevolucao || '');
         FichaStorageService.acknowledgeDevolucao(devolvida.id);
+        localStorage.removeItem('fichaDevolvidaSelecionada');
       }
     } catch {}
   }, []);
