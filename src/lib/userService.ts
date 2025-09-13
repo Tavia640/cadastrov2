@@ -10,6 +10,7 @@ export interface Usuario {
 
 export class UserService {
   private static readonly KEY = 'gav_users';
+  private static readonly MASTER_NAME = 'Master';
 
   static hasUsers(): boolean {
     try {
@@ -26,7 +27,24 @@ export class UserService {
     try {
       const data = localStorage.getItem(this.KEY);
       const arr = data ? JSON.parse(data) : [];
-      return Array.isArray(arr) ? arr : [];
+      const users: Usuario[] = Array.isArray(arr) ? arr : [];
+      let changed = false;
+      // Rebaixar qualquer master que não seja o nome fixo
+      users.forEach(u => {
+        if (u.perfil === 'master' && u.nome !== this.MASTER_NAME) {
+          u.perfil = 'admin';
+          changed = true;
+        }
+      });
+      // Garantir ��nico master
+      const masters = users.filter(u => u.perfil === 'master' && u.nome === this.MASTER_NAME)
+                           .sort((a,b)=>a.criadoEm - b.criadoEm);
+      for (let i = 1; i < masters.length; i++) {
+        masters[i].perfil = 'admin';
+        changed = true;
+      }
+      if (changed) this.save(users);
+      return users;
     } catch {
       return [];
     }
@@ -62,6 +80,7 @@ export class UserService {
   }
 
   static async createMaster(nome: string, senha: string): Promise<Usuario> {
+    if (nome.trim() !== this.MASTER_NAME) throw new Error('Nome do master deve ser "Master"');
     const users = this.list();
     const existsMaster = users.some((u) => u.perfil === 'master');
     if (existsMaster) throw new Error('Já existe um usuário master');
@@ -69,7 +88,7 @@ export class UserService {
     const hashed = await this.hashPassword(senha, salt);
     const user: Usuario = {
       id: this.randomId(),
-      nome: nome.trim(),
+      nome: this.MASTER_NAME,
       perfil: 'master',
       senha: hashed,
       criadoEm: Date.now(),
@@ -114,6 +133,10 @@ export class UserService {
     const users = this.list();
     const user = users.find((u) => u.nome.toLowerCase() === nome.trim().toLowerCase());
     if (!user) return null;
+    if (user.perfil === 'master' && user.nome !== this.MASTER_NAME) {
+      user.perfil = 'admin';
+      this.save(users);
+    }
     const ok = await this.verifyPassword(senha, user.senha);
     return ok ? user : null;
   }
