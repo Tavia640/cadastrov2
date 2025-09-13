@@ -55,12 +55,12 @@ export class SessionService {
     return this.getSession() !== null;
   }
 
-  static hasPermission(requiredProfile: 'consultor' | 'admin'): boolean {
+  static hasPermission(requiredProfile: 'consultor' | 'admin' | 'master'): boolean {
     const session = this.getSession();
     if (!session) return false;
 
-    // Admin tem acesso a tudo, consultor só ao seu próprio perfil
-    if (session.perfil === 'admin') return true;
+    // Master tem acesso a tudo; Admin tem acesso a tudo;
+    if (session.perfil === 'master' || session.perfil === 'admin') return true;
     return session.perfil === requiredProfile;
   }
 
