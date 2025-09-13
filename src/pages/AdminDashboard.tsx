@@ -209,7 +209,7 @@ const AdminDashboard: React.FC = () => {
         <Card className="max-w-7xl mx-auto">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
-              <Button variant="ghost" onClick={() => navigate('/')} className="flex items-center gap-2">
+              <Button variant="ghost" onClick={() => navigate('/login')} className="flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
