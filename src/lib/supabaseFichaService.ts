@@ -255,30 +255,70 @@ export class SupabaseFichaService {
     try {
       console.log('🔍 Buscando fichas no Supabase...');
 
-      const { data: fichas, error } = await supabase
+      // Buscar fichas sem relacionamentos (evita necessidade de FKs cadastradas no schema cache)
+      const { data: fichas, error: fichasError } = await supabase
         .from('fichas_negociacao')
-        .select(`
-          *,
-          clientes (*),
-          contratos (*),
-          pagamentos (*),
-          formas_pagamento_sala (*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Erro ao buscar fichas:', error);
-        throw new Error(`Erro ao buscar fichas: ${error.message}`);
+      if (fichasError) {
+        console.error('❌ Erro ao buscar fichas:', fichasError);
+        throw new Error(`Erro ao buscar fichas: ${fichasError.message}`);
       }
 
-      console.log('✅ Fichas encontradas:', fichas?.length || 0);
+      const allFichas = fichas || [];
+      console.log('✅ Fichas encontradas:', allFichas.length);
 
-      // Converter dados do Supabase para o formato esperado
-      const fichasConvertidas: FichaCompleta[] = (fichas || []).map(ficha => 
-        this.convertSupabaseToFicha(ficha as FichaSupabase)
-      );
+      if (allFichas.length === 0) return [];
 
-      return fichasConvertidas;
+      const fichaIds = allFichas.map(f => f.id);
+      const clienteIds = Array.from(new Set(allFichas.map(f => f.cliente_id).filter(Boolean)));
+
+      const [clientesRes, contratosRes, pagamentosRes, formasSalaRes] = await Promise.all([
+        supabase.from('clientes').select('*').in('id', clienteIds),
+        supabase.from('contratos').select('*').in('ficha_id', fichaIds),
+        supabase.from('pagamentos').select('*').in('ficha_id', fichaIds),
+        supabase.from('formas_pagamento_sala').select('*').in('ficha_id', fichaIds),
+      ]);
+
+      const clientes = clientesRes.data || [];
+      const contratos = contratosRes.data || [];
+      const pagamentos = pagamentosRes.data || [];
+      const formasSala = formasSalaRes.data || [];
+
+      const clienteById = new Map((clientes as any[]).map((c: any) => [c.id, c]));
+      const contratosByFicha = new Map<string, any[]>();
+      const pagamentosByFicha = new Map<string, any[]>();
+      const formasSalaByFicha = new Map<string, any[]>();
+
+      for (const c of contratos as any[]) {
+        const arr = contratosByFicha.get(c.ficha_id) || [];
+        arr.push(c);
+        contratosByFicha.set(c.ficha_id, arr);
+      }
+      for (const p of pagamentos as any[]) {
+        const arr = pagamentosByFicha.get(p.ficha_id) || [];
+        arr.push(p);
+        pagamentosByFicha.set(p.ficha_id, arr);
+      }
+      for (const fs of formasSala as any[]) {
+        const arr = formasSalaByFicha.get(fs.ficha_id) || [];
+        arr.push(fs);
+        formasSalaByFicha.set(fs.ficha_id, arr);
+      }
+
+      const montadas = allFichas.map((f: any) => {
+        const fichaSupabase: FichaSupabase = {
+          ...f,
+          clientes: clienteById.get(f.cliente_id) as any,
+          contratos: contratosByFicha.get(f.id) || [],
+          pagamentos: pagamentosByFicha.get(f.id) || [],
+          formas_pagamento_sala: formasSalaByFicha.get(f.id) || [],
+        } as FichaSupabase;
+        return this.convertSupabaseToFicha(fichaSupabase);
+      });
+
+      return montadas;
 
     } catch (error: any) {
       console.error('❌ Erro ao buscar fichas:', error);
@@ -288,26 +328,35 @@ export class SupabaseFichaService {
 
   static async getFicha(id: string): Promise<FichaCompleta | null> {
     try {
-      const { data: ficha, error } = await supabase
+      const { data: ficha, error: fichaError } = await supabase
         .from('fichas_negociacao')
-        .select(`
-          *,
-          clientes (*),
-          contratos (*),
-          pagamentos (*),
-          formas_pagamento_sala (*)
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return null; // Ficha não encontrada
-        }
-        throw new Error(`Erro ao buscar ficha: ${error.message}`);
+      if (fichaError) {
+        if ((fichaError as any).code === 'PGRST116') return null;
+        throw new Error(`Erro ao buscar ficha: ${fichaError.message}`);
       }
 
-      return this.convertSupabaseToFicha(ficha as FichaSupabase);
+      if (!ficha) return null;
+
+      const [clienteRes, contratosRes, pagamentosRes, formasSalaRes] = await Promise.all([
+        supabase.from('clientes').select('*').eq('id', (ficha as any).cliente_id).maybeSingle(),
+        supabase.from('contratos').select('*').eq('ficha_id', (ficha as any).id),
+        supabase.from('pagamentos').select('*').eq('ficha_id', (ficha as any).id),
+        supabase.from('formas_pagamento_sala').select('*').eq('ficha_id', (ficha as any).id),
+      ]);
+
+      const fichaSupabase: FichaSupabase = {
+        ...(ficha as any),
+        clientes: clienteRes.data as any,
+        contratos: contratosRes.data || [],
+        pagamentos: pagamentosRes.data || [],
+        formas_pagamento_sala: formasSalaRes.data || [],
+      } as FichaSupabase;
+
+      return this.convertSupabaseToFicha(fichaSupabase);
 
     } catch (error: any) {
       console.error('❌ Erro ao buscar ficha:', error);
@@ -449,6 +498,11 @@ export class SupabaseFichaService {
     return await this.atualizarStatus(id, 'concluida');
   }
 
+  static async devolverParaConsultor(id: string, _nomeAdmin: string, _motivo: string): Promise<boolean> {
+    // Sem suporte a motivo no schema atual; apenas volta para pendente
+    return await this.atualizarStatus(id, 'pendente');
+  }
+
   static async getEstatisticas() {
     try {
       const { data: fichas, error } = await supabase
@@ -498,78 +552,78 @@ export class SupabaseFichaService {
   }
 
   private static convertSupabaseToFicha(fichaSupabase: FichaSupabase): FichaCompleta {
-    const cliente = fichaSupabase.clientes;
-    
+    const cliente: any = (fichaSupabase as any).clientes || {};
+
     return {
       id: fichaSupabase.id,
-      nomeConsultor: fichaSupabase.nome_consultor,
-      timestamp: new Date(fichaSupabase.created_at).getTime(),
-      status: fichaSupabase.status as FichaCompleta['status'],
-      adminResponsavel: fichaSupabase.admin_responsavel || undefined,
-      timestampInicio: fichaSupabase.timestamp_inicio ? new Date(fichaSupabase.timestamp_inicio).getTime() : undefined,
-      timestampConclusao: fichaSupabase.timestamp_conclusao ? new Date(fichaSupabase.timestamp_conclusao).getTime() : undefined,
-      
+      nomeConsultor: (fichaSupabase as any).nome_consultor || '',
+      timestamp: fichaSupabase.created_at ? new Date((fichaSupabase as any).created_at).getTime() : Date.now(),
+      status: (fichaSupabase.status as FichaCompleta['status']) || 'pendente',
+      adminResponsavel: (fichaSupabase as any).admin_responsavel || undefined,
+      timestampInicio: (fichaSupabase as any).timestamp_inicio ? new Date((fichaSupabase as any).timestamp_inicio as any).getTime() : undefined,
+      timestampConclusao: (fichaSupabase as any).timestamp_conclusao ? new Date((fichaSupabase as any).timestamp_conclusao as any).getTime() : undefined,
+
       dadosCliente: {
-        nome: cliente.nome,
-        cpf: cliente.cpf,
-        rg: cliente.rg,
-        orgaoEmissor: cliente.orgao_emissor,
-        estadoEmissor: cliente.estado_emissor,
-        profissao: cliente.profissao,
-        dataNascimento: cliente.data_nascimento,
-        estadoCivil: cliente.estado_civil,
-        email: cliente.email,
-        telefone: cliente.telefone,
-        logradouro: cliente.logradouro,
-        numero: cliente.numero,
-        bairro: cliente.bairro,
-        complemento: cliente.complemento,
-        cep: cliente.cep,
-        cidade: cliente.cidade,
-        estado: cliente.estado,
-        nomeConjuge: cliente.nome_conjuge,
-        cpfConjuge: cliente.cpf_conjuge,
-        rgConjuge: cliente.rg_conjuge,
-        orgaoEmissorConjuge: cliente.orgao_emissor_conjuge,
-        estadoEmissorConjuge: cliente.estado_emissor_conjuge,
-        profissaoConjuge: cliente.profissao_conjuge,
-        dataNascimentoConjuge: cliente.data_nascimento_conjuge,
-        estadoCivilConjuge: cliente.estado_civil_conjuge,
-        emailConjuge: cliente.email_conjuge,
-        telefoneConjuge: cliente.telefone_conjuge,
+        nome: cliente.nome || '',
+        cpf: cliente.cpf || '',
+        rg: cliente.rg || '',
+        orgaoEmissor: cliente.orgao_emissor || '',
+        estadoEmissor: cliente.estado_emissor || '',
+        profissao: cliente.profissao || '',
+        dataNascimento: cliente.data_nascimento || '',
+        estadoCivil: cliente.estado_civil || '',
+        email: cliente.email || '',
+        telefone: cliente.telefone || '',
+        logradouro: cliente.logradouro || '',
+        numero: cliente.numero || '',
+        bairro: cliente.bairro || '',
+        complemento: cliente.complemento || '',
+        cep: cliente.cep || '',
+        cidade: cliente.cidade || '',
+        estado: cliente.estado || '',
+        nomeConjuge: cliente.nome_conjuge || '',
+        cpfConjuge: cliente.cpf_conjuge || '',
+        rgConjuge: cliente.rg_conjuge || '',
+        orgaoEmissorConjuge: cliente.orgao_emissor_conjuge || '',
+        estadoEmissorConjuge: cliente.estado_emissor_conjuge || '',
+        profissaoConjuge: cliente.profissao_conjuge || '',
+        dataNascimentoConjuge: cliente.data_nascimento_conjuge || '',
+        estadoCivilConjuge: cliente.estado_civil_conjuge || '',
+        emailConjuge: cliente.email_conjuge || '',
+        telefoneConjuge: cliente.telefone_conjuge || '',
       },
-      
+
       dadosNegociacao: {
-        liner: fichaSupabase.liner,
-        closer: fichaSupabase.closer,
-        liderSala: fichaSupabase.lider_sala,
-        nomeSala: fichaSupabase.nome_sala,
-        tipoVenda: fichaSupabase.tipo_venda,
-        
-        contratos: fichaSupabase.contratos.map(contrato => ({
-          empreendimento: contrato.empreendimento,
-          categoriaPreco: contrato.categoria_preco,
-          torre: contrato.torre,
-          apartamento: contrato.apartamento,
-          cota: contrato.cota,
-          valor: contrato.valor.toString(),
-          tipoContrato: contrato.tipo_contrato
+        liner: (fichaSupabase as any).liner || '',
+        closer: (fichaSupabase as any).closer || '',
+        liderSala: (fichaSupabase as any).lider_sala || '',
+        nomeSala: (fichaSupabase as any).nome_sala || '',
+        tipoVenda: (fichaSupabase as any).tipo_venda || '',
+
+        contratos: ((fichaSupabase as any).contratos || []).map((contrato: any) => ({
+          empreendimento: contrato.empreendimento || '',
+          categoriaPreco: contrato.categoria_preco || '',
+          torre: contrato.torre || '',
+          apartamento: contrato.apartamento || '',
+          cota: contrato.cota || '',
+          valor: (Number(contrato.valor || 0)).toString(),
+          tipoContrato: contrato.tipo_contrato || 'digital'
         })),
-        
-        informacoesPagamento: fichaSupabase.pagamentos.map(pagamento => ({
-          tipo: pagamento.tipo,
-          total: pagamento.total?.toString() || '',
-          qtdParcelas: pagamento.qtd_parcelas?.toString() || '',
-          valorParcela: pagamento.valor_parcela?.toString() || '',
+
+        informacoesPagamento: ((fichaSupabase as any).pagamentos || []).map((pagamento: any) => ({
+          tipo: pagamento.tipo || '',
+          total: pagamento.total != null ? String(pagamento.total) : '',
+          qtdParcelas: pagamento.qtd_parcelas != null ? String(pagamento.qtd_parcelas) : '',
+          valorParcela: pagamento.valor_parcela != null ? String(pagamento.valor_parcela) : '',
           formaPagamento: pagamento.forma_pagamento || '',
           primeiroVencimento: pagamento.primeiro_vencimento || ''
         })),
-        
-        parcelasPagasSala: fichaSupabase.formas_pagamento_sala.map(parcela => ({
+
+        parcelasPagasSala: ((fichaSupabase as any).formas_pagamento_sala || []).map((parcela: any) => ({
           tipo: parcela.forma_pagamento || '',
-          valorTotal: parcela.valor_total?.toString() || '',
-          valorDistribuido: parcela.valor_distribuido?.toString() || '',
-          quantidadeCotas: parcela.quantidade_cotas?.toString() || '',
+          valorTotal: parcela.valor_total != null ? String(parcela.valor_total) : '',
+          valorDistribuido: parcela.valor_distribuido != null ? String(parcela.valor_distribuido) : '',
+          quantidadeCotas: parcela.quantidade_cotas != null ? String(parcela.quantidade_cotas) : '',
           formasPagamento: [parcela.forma_pagamento || '']
         }))
       }

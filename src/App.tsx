@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import ConfiguracaoSistema from "./pages/ConfiguracaoSistema";
 import NotFound from "./pages/NotFound";
+import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,16 @@ const App = () => (
             element={
               <ProtectedRoute allowAll>
                 <ConfiguracaoSistema />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Gestão de Usuários - apenas master */}
+          <Route
+            path="/usuarios"
+            element={
+              <ProtectedRoute requiredProfile="master">
+                <GerenciarUsuarios />
               </ProtectedRoute>
             }
           />

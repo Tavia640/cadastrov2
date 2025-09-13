@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { FichaStorageService, FichaCompleta } from '@/lib/fichaStorageService';
+import { SessionService } from '@/lib/sessionService';
 import SessionHeader from '@/components/SessionHeader';
 
 const formSchema = z.object({
@@ -22,7 +26,7 @@ const formSchema = z.object({
   email: z.string().email('Email inválido'),
   telefone: z.string().min(10, 'Telefone é obrigatório'),
   profissao: z.string().min(2, 'Profissão é obrigatória'),
-  dataNascimento: z.string().min(10, 'Data de nascimento é obrigatória'),
+  dataNascimento: z.string().min(10, 'Data de nascimento é obrigat��ria'),
   estadoCivil: z.string().min(1, 'Estado civil é obrigatório'),
 
   // Campos de endereço
@@ -50,6 +54,23 @@ const formSchema = z.object({
 const CadastroCliente = () => {
   const navigate = useNavigate();
   const [showConjugeFields, setShowConjugeFields] = useState(false);
+  const [tab, setTab] = useState<'devolvidas'|'nova'>('nova');
+  const [fichasDevolvidas, setFichasDevolvidas] = useState<FichaCompleta[]>([]);
+
+  // Carregar fichas devolvidas do consultor
+  useEffect(() => {
+    const session = SessionService.getSession();
+    const all = FichaStorageService.getFichas() as any;
+    const devolvidas = (all || []).filter((f: any) => f.devolvido && f.status === 'pendente' && f.nomeConsultor === session?.nome);
+    setFichasDevolvidas(devolvidas);
+    if (devolvidas.length > 0) setTab('devolvidas');
+  }, []);
+
+  const abrirParaCorrigir = (ficha: FichaCompleta) => {
+    localStorage.setItem('fichaDevolvidaSelecionada', ficha.id);
+    localStorage.setItem('dadosCliente', JSON.stringify(ficha.dadosCliente));
+    navigate('/ficha-negociacao');
+  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -104,21 +125,55 @@ const CadastroCliente = () => {
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/')}
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/login')}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar
             </Button>
             <CardTitle className="text-2xl font-bold">
-              Cadastro do Cliente
+              Área do Consultor
             </CardTitle>
             <div className="w-20" /> {/* Spacer for centering */}
           </div>
         </CardHeader>
         <CardContent>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+            <TabsList className="grid grid-cols-2 w-full max-w-md">
+              <TabsTrigger value="devolvidas">
+                Fichas devolvidas
+                {fichasDevolvidas.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{fichasDevolvidas.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="nova">Nova ficha</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="devolvidas" className="mt-6">
+              {fichasDevolvidas.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Nenhuma ficha devolvida.</div>
+              ) : (
+                <div className="space-y-4">
+                  {fichasDevolvidas.map((f) => (
+                    <div key={f.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{f.dadosCliente.nome}</div>
+                          <div className="text-xs text-muted-foreground">Motivo: {f.motivoDevolucao || '—'}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => abrirParaCorrigir(f)}>Corrigir agora</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="nova" className="mt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Dados do Cliente */}
@@ -579,6 +634,8 @@ const CadastroCliente = () => {
               </div>
             </form>
           </Form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
       </div>

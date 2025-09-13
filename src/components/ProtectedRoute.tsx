@@ -4,7 +4,7 @@ import { SessionService } from '@/lib/sessionService';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredProfile?: 'consultor' | 'admin';
+  requiredProfile?: 'consultor' | 'admin' | 'master';
   allowAll?: boolean;
 }
 
@@ -32,7 +32,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Se um perfil específico é necessário, verificar permissão
     if (requiredProfile && !SessionService.hasPermission(requiredProfile)) {
       // Redirecionar para a página apropriada baseada no perfil do usuário
-      if (session.perfil === 'admin') {
+      if (session.perfil === 'admin' || session.perfil === 'master') {
         navigate('/admin-dashboard');
       } else {
         navigate('/cadastro-cliente');

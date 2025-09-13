@@ -8,15 +8,17 @@ export interface FichaCompleta {
   nomeConsultor: string;
   timestamp: number;
   status: 'pendente' | 'visualizada' | 'impressa' | 'em_andamento' | 'concluida' | 'arquivada';
-  adminResponsavel?: string; // Nome do admin que pegou para fazer
-  timestampInicio?: number; // Quando foi iniciado o atendimento
-  timestampConclusao?: number; // Quando foi concluído
+  adminResponsavel?: string;
+  timestampInicio?: number;
+  timestampConclusao?: number;
+  devolvido?: boolean;
+  motivoDevolucao?: string;
 }
 
 export class FichaStorageService {
   private static readonly FICHAS_KEY = 'gav_fichas_admin';
   private static readonly MAX_FICHAS = 50; // Limite para não sobrecarregar o localStorage
-  private static readonly USE_SUPABASE = true; // Flag para usar Supabase
+  private static readonly USE_SUPABASE = false; // Flag para usar Supabase
 
   static salvarFicha(dadosCliente: DadosCliente, dadosNegociacao: DadosNegociacao, nomeConsultor: string): string {
     if (this.USE_SUPABASE) {
@@ -92,8 +94,9 @@ export class FichaStorageService {
       const fichasData = localStorage.getItem(this.FICHAS_KEY);
       if (!fichasData) return [];
 
-      const fichas: FichaCompleta[] = JSON.parse(fichasData);
-      
+      const parsed = JSON.parse(fichasData);
+      const fichas: FichaCompleta[] = Array.isArray(parsed) ? parsed : [];
+
       // Filtrar fichas muito antigas (mais de 24h)
       const agora = Date.now();
       const fichasFiltradas = fichas.filter(ficha => 
@@ -284,12 +287,55 @@ export class FichaStorageService {
     return this.liberarFichaLocal(id, nomeAdmin);
   }
 
+  static devolverParaConsultor(id: string, nomeAdmin: string, motivo: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.devolverParaConsultorSupabase(id, nomeAdmin, motivo);
+    }
+    return this.devolverParaConsultorLocal(id, nomeAdmin, motivo);
+  }
+
   private static async liberarFichaSupabase(id: string, nomeAdmin: string): Promise<boolean> {
     try {
       return await SupabaseFichaService.liberarFicha(id, nomeAdmin);
     } catch (error) {
       console.error('❌ Erro ao liberar ficha no Supabase:', error);
       return this.liberarFichaLocal(id, nomeAdmin);
+    }
+  }
+
+  private static async devolverParaConsultorSupabase(id: string, nomeAdmin: string, motivo: string): Promise<boolean> {
+    try {
+      const ok = await SupabaseFichaService.atualizarStatus(id, 'pendente');
+      return !!ok;
+    } catch (error) {
+      console.error('❌ Erro ao devolver ficha no Supabase:', error);
+      return this.devolverParaConsultorLocal(id, nomeAdmin, motivo);
+    }
+  }
+
+  static acknowledgeDevolucao(id: string): boolean {
+    if (this.USE_SUPABASE) {
+      return this.acknowledgeDevolucaoSupabase(id);
+    }
+    return this.acknowledgeDevolucaoLocal(id);
+  }
+
+  private static async acknowledgeDevolucaoSupabase(_id: string): Promise<boolean> {
+    // Sem suporte a motivo/flag no schema atual
+    return true;
+  }
+
+  private static acknowledgeDevolucaoLocal(id: string): boolean {
+    try {
+      const fichas = this.getFichas();
+      const idx = fichas.findIndex(f => f.id === id);
+      if (idx === -1) return false;
+      fichas[idx].devolvido = false;
+      fichas[idx].motivoDevolucao = '';
+      localStorage.setItem(this.FICHAS_KEY, JSON.stringify(fichas));
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -300,7 +346,6 @@ export class FichaStorageService {
 
       if (index === -1) return false;
 
-      // Verificar se o admin é o responsável pela ficha
       if (fichas[index].adminResponsavel !== nomeAdmin) {
         return false;
       }
@@ -315,6 +360,28 @@ export class FichaStorageService {
       return true;
     } catch (error) {
       console.error('❌ Erro ao liberar ficha:', error);
+      return false;
+    }
+  }
+
+  private static devolverParaConsultorLocal(id: string, nomeAdmin: string, motivo: string): boolean {
+    try {
+      const fichas = this.getFichas();
+      const index = fichas.findIndex(ficha => ficha.id === id);
+      if (index === -1) return false;
+      if (fichas[index].adminResponsavel !== nomeAdmin) return false;
+
+      fichas[index].status = 'pendente';
+      fichas[index].adminResponsavel = undefined;
+      fichas[index].timestampInicio = undefined;
+      fichas[index].devolvido = true;
+      fichas[index].motivoDevolucao = motivo || '';
+
+      localStorage.setItem(this.FICHAS_KEY, JSON.stringify(fichas));
+      console.log(`↩️ Ficha ${id} devolvida ao consultor. Motivo: ${motivo}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao devolver ficha:', error);
       return false;
     }
   }

@@ -39,7 +39,18 @@ const SessionHeader = () => {
               <Clock className="h-4 w-4 text-gray-500" />
               <span className="text-gray-700">Expira em: {SessionService.getRemainingTime()}</span>
             </div>
-            
+
+            {session.perfil === 'master' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/usuarios')}
+                className="flex items-center"
+              >
+                Usuários
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="sm"

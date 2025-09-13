@@ -1,6 +1,6 @@
 export interface UserSession {
   nome: string;
-  perfil: 'consultor' | 'admin';
+  perfil: 'consultor' | 'admin' | 'master';
   timestamp: number;
   expiresAt: number;
 }
@@ -9,7 +9,7 @@ export class SessionService {
   private static readonly SESSION_KEY = 'gav_user_session';
   private static readonly SESSION_DURATION = 12 * 60 * 60 * 1000; // 12 horas em ms
 
-  static createSession(nome: string, perfil: 'consultor' | 'admin'): UserSession {
+  static createSession(nome: string, perfil: 'consultor' | 'admin' | 'master'): UserSession {
     const now = Date.now();
     const session: UserSession = {
       nome: nome.trim(),
@@ -55,12 +55,12 @@ export class SessionService {
     return this.getSession() !== null;
   }
 
-  static hasPermission(requiredProfile: 'consultor' | 'admin'): boolean {
+  static hasPermission(requiredProfile: 'consultor' | 'admin' | 'master'): boolean {
     const session = this.getSession();
     if (!session) return false;
 
-    // Admin tem acesso a tudo, consultor só ao seu próprio perfil
-    if (session.perfil === 'admin') return true;
+    // Master tem acesso a tudo; Admin tem acesso a tudo;
+    if (session.perfil === 'master' || session.perfil === 'admin') return true;
     return session.perfil === requiredProfile;
   }
 

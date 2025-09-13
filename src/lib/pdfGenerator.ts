@@ -165,7 +165,9 @@ export class PDFGenerator {
       pdf.setFontSize(8);
       pdf.setFont("helvetica", "normal");
       pdf.text("Código: FCR 02/01 rev.", 150, 12);
-      pdf.text("Data: " + new Date().toLocaleDateString('pt-BR') + " rev.", 150, 16);
+      const __d1 = new Date();
+      const __data1 = `${String(__d1.getDate()).padStart(2,'0')}-${String(__d1.getMonth()+1).padStart(2,'0')}-${__d1.getFullYear()}`;
+      pdf.text("Data: " + __data1 + " rev.", 150, 16);
       pdf.text("Página: 1 de 1", 150, 20);
       
       // Seção DADOS DO CLIENTE
@@ -239,20 +241,20 @@ export class PDFGenerator {
       pdf.text("ENDEREÇO:", 12, yPos);
       yPos += 15;
       
-      // Campos de endereço (vazios conforme padrão)
-      this.createField(pdf, "Logradouro", "", 10, yPos, 130, 8);
-      this.createField(pdf, "Nº", "", 145, yPos, 55, 8);
+      // Campos de endereço preenchidos
+      this.createField(pdf, "Logradouro", dadosCliente.logradouro || "", 10, yPos, 130, 8);
+      this.createField(pdf, "Nº", dadosCliente.numero || "", 145, yPos, 55, 8);
       yPos += 12;
-      
-      this.createField(pdf, "Bairro", "", 10, yPos, 190, 8);
+
+      this.createField(pdf, "Bairro", dadosCliente.bairro || "", 10, yPos, 190, 8);
       yPos += 12;
-      
-      this.createField(pdf, "Complemento", "", 10, yPos, 130, 8);
-      this.createField(pdf, "CEP", "", 145, yPos, 55, 8);
+
+      this.createField(pdf, "Complemento", dadosCliente.complemento || "", 10, yPos, 130, 8);
+      this.createField(pdf, "CEP", dadosCliente.cep || "", 145, yPos, 55, 8);
       yPos += 12;
-      
-      this.createField(pdf, "Cidade", "", 10, yPos, 130, 8);
-      this.createField(pdf, "UF", "", 145, yPos, 55, 8);
+
+      this.createField(pdf, "Cidade", dadosCliente.cidade || "", 10, yPos, 130, 8);
+      this.createField(pdf, "UF", dadosCliente.estado || "", 145, yPos, 55, 8);
       
       return pdf;
       
@@ -293,7 +295,9 @@ export class PDFGenerator {
       pdf.setFontSize(8);
       pdf.setFont("helvetica", "normal");
       pdf.text("Código: FCR 02/01 rev.", 150, 12);
-      pdf.text("Data: " + new Date().toLocaleDateString('pt-BR') + " rev.", 150, 16);
+      const __d2 = new Date();
+      const __data2 = `${String(__d2.getDate()).padStart(2,'0')}-${String(__d2.getMonth()+1).padStart(2,'0')}-${__d2.getFullYear()}`;
+      pdf.text("Data: " + __data2 + " rev.", 150, 16);
       pdf.text("Página: 1 de 2", 150, 20);
       
       // Dados básicos
@@ -333,16 +337,17 @@ export class PDFGenerator {
       
       // Tipo de venda
       pdf.setFont("helvetica", "normal");
-      const tipos = ['PADRÃO', 'SEMESTRAL', 'ANUAL', 'À VISTA', 'ATÉ 36x', 'LINEAR'];
-      const tipoAtivo = dadosNegociacao.tipoVenda?.toUpperCase();
-      
-      let tipoTexto = tipos.map(tipo => {
-        return tipoAtivo === tipo.toLowerCase().replace('à ', 'a-').replace(' ', '-') 
-          ? `(X) ${tipo}` 
-          : `( ) ${tipo}`;
-      }).join(' ');
-      
-      pdf.text(tipoTexto, 12, yPos);
+      const __sel = (dadosNegociacao.tipoVenda || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/gi,'').toLowerCase();
+      const __tiposVenda = [
+        { key: 'padrao', label: 'PADRÃO' },
+        { key: 'semestral', label: 'SEMESTRAL' },
+        { key: 'anual', label: 'ANUAL' },
+        { key: 'a-vista', label: 'À VISTA' },
+        { key: 'ate-36x', label: 'ATÉ 36x' },
+        { key: 'linear', label: 'LINEAR' },
+      ];
+      const __tipoTexto = __tiposVenda.map(t => `${__sel === t.key ? '(X)' : '( )'} ${t.label}`).join(' ');
+      pdf.text(__tipoTexto, 12, yPos);
       yPos += 15;
       
       // Tabela de Parcelas Pagas na Sala
@@ -389,13 +394,29 @@ export class PDFGenerator {
       dadosNegociacao.informacoesPagamento
         .filter(info => info.total && parseFloat(info.total) > 0)
         .forEach(info => {
+          const fmtDate = (v: any) => {
+            if (!v) return '';
+            const s = String(v).trim();
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) {
+              const dd = String(d.getDate()).padStart(2,'0');
+              const mm = String(d.getMonth()+1).padStart(2,'0');
+              const yyyy = d.getFullYear();
+              return `${dd}-${mm}-${yyyy}`;
+            }
+            const m1 = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+            if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+            const m2 = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})$/);
+            if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+            return s;
+          };
           const values = [
             info.tipo,
             info.total,
             info.qtdParcelas,
             info.valorParcela,
             info.formaPagamento,
-            info.primeiroVencimento
+            fmtDate(info.primeiroVencimento)
           ];
           yPos = this.createTableRow(pdf, values, 10, yPos, widthsPag, 6);
         });
