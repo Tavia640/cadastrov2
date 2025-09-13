@@ -32,12 +32,10 @@ const Welcome = () => {
   }, [navigate]);
 
   return (
-    <div 
-      className="fixed top-0 left-0 w-full h-full flex flex-col items-center justify-center text-white z-50 animate-fade-out"
+    <div
+      className="fixed top-0 left-0 w-full h-full flex flex-col items-center justify-center text-white z-50"
       style={{
-        background: 'linear-gradient(135deg, #0d1b2a, #1b263b, #415a77, #0d1b2a)',
-        backgroundSize: '400% 400%',
-        animation: 'gradient-bg 8s ease infinite, fade-out 1s ease-in-out 5s forwards'
+        background: 'linear-gradient(135deg, #0d1b2a, #1b263b, #415a77, #0d1b2a)'
       }}
     >
       {/* Botão de Configurações */}
@@ -51,18 +49,17 @@ const Welcome = () => {
         Configurações
       </Button>
       
-      <img 
-        src={gavLogo} 
-        alt="Logo GAV Resorts" 
-        className="w-32 h-32 animate-pulse-logo"
-        style={{ 
-          filter: 'drop-shadow(0 0 15px rgba(255, 255, 255, 0.3))',
-          transition: 'all 0.3s ease'
+      <img
+        src={gavLogo}
+        alt="Logo GAV Resorts"
+        className="w-32 h-32"
+        style={{
+          filter: 'drop-shadow(0 0 15px rgba(255, 255, 255, 0.3))'
         }}
       />
       
-      <h1 
-        className="mt-6 text-3xl font-light opacity-0 animate-fade-in-up tracking-wide"
+      <h1
+        className="mt-6 text-3xl font-light tracking-wide"
         style={{ letterSpacing: '1px' }}
       >
         Parabéns, <span className="font-semibold text-[#58e1c1]" style={{ textShadow: '0 0 10px rgba(88, 225, 193, 0.6)' }}>300 do Sul!</span>
