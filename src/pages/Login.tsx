@@ -95,12 +95,13 @@ const Login = () => {
             <Input
               id="nome"
               type="text"
-              placeholder={bootstrap ? 'Defina o nome do usuário master' : 'Digite seu nome'}
-              value={nome}
+              placeholder={bootstrap ? 'Master' : 'Digite seu nome'}
+              value={bootstrap ? 'Master' : nome}
               onChange={(e) => setNome(e.target.value)}
               onKeyPress={handleKeyPress}
               className="w-full"
               maxLength={100}
+              disabled={bootstrap}
             />
           </div>
 
