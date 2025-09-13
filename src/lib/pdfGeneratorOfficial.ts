@@ -624,7 +624,19 @@ export class PDFGeneratorOfficial {
           limitText(safeString(infoPagamento?.formaPagamento), 15),
           infoPagamento?.primeiroVencimento ? (() => {
             try {
-              return new Date(infoPagamento.primeiroVencimento).toLocaleDateString('pt-BR');
+              const s = safeString(infoPagamento.primeiroVencimento);
+              const d = new Date(s);
+              if (!isNaN(d.getTime())) {
+                const dd = String(d.getDate()).padStart(2,'0');
+                const mm = String(d.getMonth()+1).padStart(2,'0');
+                const yyyy = d.getFullYear();
+                return `${dd}-${mm}-${yyyy}`;
+              }
+              const m1 = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+              if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+              const m2 = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})$/);
+              if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+              return s;
             } catch {
               return safeString(infoPagamento.primeiroVencimento);
             }
