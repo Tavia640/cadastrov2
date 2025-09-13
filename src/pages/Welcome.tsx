@@ -21,7 +21,7 @@ const Welcome = () => {
 
     // Se há sessão, redirecionar baseado no perfil após 3 segundos
     const timerNavigate = setTimeout(() => {
-      if (session.perfil === "admin") {
+      if (session.perfil === "admin" || session.perfil === 'master') {
         navigate('/admin-dashboard');
       } else {
         navigate('/cadastro-cliente');
