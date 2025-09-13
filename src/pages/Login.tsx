@@ -50,13 +50,13 @@ const Login = () => {
   };
 
   const handleCreateMaster = async () => {
-    if (!nome.trim() || !senha.trim()) {
-      alert('Defina nome e senha do master');
+    if (!senha.trim()) {
+      alert('Defina a senha do master');
       return;
     }
     setLoading(true);
     try {
-      const master = await UserService.createMaster(nome, senha);
+      const master = await UserService.createMaster('Master', senha);
       SessionService.createSession(master.nome, master.perfil);
       navigate('/admin-dashboard');
     } catch (e: any) {
