@@ -394,13 +394,29 @@ export class PDFGenerator {
       dadosNegociacao.informacoesPagamento
         .filter(info => info.total && parseFloat(info.total) > 0)
         .forEach(info => {
+          const fmtDate = (v: any) => {
+            if (!v) return '';
+            const s = String(v).trim();
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) {
+              const dd = String(d.getDate()).padStart(2,'0');
+              const mm = String(d.getMonth()+1).padStart(2,'0');
+              const yyyy = d.getFullYear();
+              return `${dd}-${mm}-${yyyy}`;
+            }
+            const m1 = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+            if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+            const m2 = s.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})$/);
+            if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+            return s;
+          };
           const values = [
             info.tipo,
             info.total,
             info.qtdParcelas,
             info.valorParcela,
             info.formaPagamento,
-            info.primeiroVencimento
+            fmtDate(info.primeiroVencimento)
           ];
           yPos = this.createTableRow(pdf, values, 10, yPos, widthsPag, 6);
         });
